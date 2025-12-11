@@ -3,13 +3,23 @@
 //    @fthx 2025
 
 
+import GLib from 'gi://GLib';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 
 export default class OverviewOnEmptyWorkspaceExtension {
     _showOverview() {
-        if (!Main.overview.visible && global.workspace_manager.get_active_workspace()?.n_windows === 0)
-            Main.overview.show();
+        if (this._timeout)
+            GLib.Source.remove(this._timeout);
+
+        this._timeout = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            if (!Main.overview.visible && global.workspace_manager.get_active_workspace()?.n_windows === 0)
+                Main.overview.show();
+
+            this._timeout = null;
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     enable() {
@@ -20,5 +30,10 @@ export default class OverviewOnEmptyWorkspaceExtension {
     disable() {
         global.display.disconnectObject(this);
         global.workspace_manager.disconnectObject(this);
+
+        if (this._timeout) {
+            GLib.Source.remove(this._timeout);
+            this._timeout = null;
+        }
     }
 }
